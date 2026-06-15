@@ -23,7 +23,7 @@
 
 | 阶段 | 状态 | 备注 |
 | :--- | :--- | :--- |
-| 目录结构搭建 | ✅ 完成 | `PortableEnv/`、`Projects/`、`Doc/`、`Docs_Dev/` 已创建 |
+| 目录结构搭建 | ✅ 完成 | `PortableEnv/`、`Projects/`、`Doc/`、`Doc_Dev/` 已创建 |
 | Arduino-CLI + ESP32 核心移植 | ✅ 完成 | 约 5.9 GB，已验证离线编译 |
 | VS Code 便携版部署 | ✅ 完成 | 已启用 `data` 便携模式 |
 | 启动/退出脚本 | ✅ 完成 | 普通模式免管理员，RAMDisk 可选 |
@@ -84,11 +84,12 @@ ESP32_DEV (D:\)
 │       └── .vscode\tasks.json
 ├── Doc\
 │   └── DevUDisk_User_QuickStart_v1.0.md
-└── Docs_Dev\
-    ├── DevUDisk_DocumentRules_v1.0.md
-    ├── DevUDisk_Plan_v1.0.md
-    ├── DevUDisk_Plan_ActionPlan_v1.0.md
-    └── DevUDisk_Plan_DeliveryNotes_v1.0.md
+└── Doc_Dev\
+    ├── DevUDisk_DocumentRules_v1.1.md
+    └── DevUDisk_Plan_v1.0\
+        ├── DevUDisk_Plan_v1.0.md
+        ├── DevUDisk_Plan_ActionPlan_v1.0.md
+        └── DevUDisk_Plan_DeliveryNotes_v1.0.md
 ```
 
 ---
@@ -132,7 +133,7 @@ ESP32_DEV (D:\)
 
 1. 执行验证清单：盘符自适应、环境校验、路径隔离、离线编译、VS Code 启动、临时目录回退均通过。✅
 2. 清理构建中间文件，最终 U 盘占用约 7.0 GB，可用 51 GB。✅
-3. 编写 `Docs_Dev\DevUDisk_Plan_DeliveryNotes_v1.0.md`。✅
+3. 编写 `Doc_Dev\DevUDisk_Plan_v1.0\DevUDisk_Plan_DeliveryNotes_v1.0.md`。✅
 4. 补充 ImDisk 二进制（如可能）。⏳ 受下载限制，需手动补充
 5. 制作镜像文件（可选）。⏳ 待二期
 

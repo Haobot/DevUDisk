@@ -73,10 +73,10 @@ ESP32_DEV (U:\)
 │       └── CP210x_VCP.exe
 ├── Projects\                # 学生工程目录（Git 仓库）
 ├── Doc\                     # 面向学生的说明文档
-└── Docs_Dev\                # 面向开发者的设计/规划文档
+└── Doc_Dev\                # 面向开发者的设计/规划文档
 ```
 
-> **注：** 文档目录在后续实施中拆分为 `Doc\`（用户文档）与 `Docs_Dev\`（开发者文档），详见 `Docs_Dev\DevUDisk_DocumentRules_v1.0.md`。
+> **注：** 文档目录在后续实施中拆分为 `Doc\`（用户文档）与 `Doc_Dev\`（开发者文档），详见 `Doc_Dev\DevUDisk_DocumentRules_v1.1.md`。
 
 ---
 
