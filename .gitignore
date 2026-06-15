@@ -1,0 +1,19 @@
+# DevUDisk Git Ignore List
+
+# Environment and Toolchain
+/PortableEnv/
+
+# User Projects
+/Projects/
+
+# Windows System Folders
+/System Volume Information/
+/$RECYCLE.BIN/
+
+# OS Generated Files
+Thumbs.db
+desktop.ini
+
+# Temporary and Log Files
+*.tmp
+*.log
