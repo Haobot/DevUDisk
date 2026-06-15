@@ -36,8 +36,8 @@ DevUDisk lets students, teachers, and makers carry a complete ESP32 Arduino-CLI 
 1. Insert the `ESP32_DEV` USB drive into a Windows PC.
 2. Open File Explorer and go to the drive root.
 3. Double-click **`StartDevEnv.bat`**.
-4. In VS Code, open `Projects\Blink\Blink.ino`.
-5. Press `Ctrl + Shift + B` to build.
+4. In VS Code:, open `Blink → Blink.ino` from the workspace explorer.
+5. Press `Ctrl + Shift + B` to run the default build task.
 6. Connect an ESP32 board and update the COM port in `.vscode\tasks.json` if needed.
 7. Run the **Arduino: Upload** task to flash the firmware.
 
@@ -66,6 +66,7 @@ D:/
 ├── Projects/                                     # Sample projects (not tracked by git)
 │   ├── Blink/
 │   └── WiFiScan/
+├── DevUDisk.code-workspace                       # Multi-project VS Code: workspace
 ├── StartDevEnv.bat                               # Launch development environment
 ├── StopDevEnv.bat                                # Safely stop and eject
 └── README.md                                     # This file
@@ -84,7 +85,7 @@ D:/
 3. Sets Arduino environment variables so only the USB drive's packages are used.
 4. Creates an `R:` RAMDisk if ImDisk is installed and the script is run as administrator.
 5. Falls back to `%TEMP%\DevUDisk_build` if RAMDisk is unavailable.
-6. Launches portable VS Code with an isolated `PATH`.
+6. Launches portable VS Code: with the `DevUDisk.code-workspace` multi-project workspace and an isolated `PATH`.
 
 ### StopDevEnv.bat
 
@@ -191,8 +192,8 @@ DevUDisk 让学生、教师和创客把完整的 ESP32 Arduino-CLI + VS Code 环
 1. 将 `ESP32_DEV` U 盘插入 Windows 电脑。
 2. 打开文件资源管理器，进入 U 盘根目录。
 3. 双击 **`StartDevEnv.bat`**。
-4. 在 VS Code 中打开 `Projects\Blink\Blink.ino`。
-5. 按 `Ctrl + Shift + B` 编译。
+4. 在 VS Code: 工作区资源管理器中打开 `Blink → Blink.ino`。
+5. 按 `Ctrl + Shift + B` 运行默认构建任务。
 6. 连接 ESP32 开发板，如有需要修改 `.vscode\tasks.json` 中的 COM 口号。
 7. 运行 **Arduino: Upload** 任务上传固件。
 
@@ -221,6 +222,7 @@ D:/
 ├── Projects/                                     # 示例工程（不被 git 追踪）
 │   ├── Blink/
 │   └── WiFiScan/
+├── DevUDisk.code-workspace                       # 多工程 VS Code: 工作区
 ├── StartDevEnv.bat                               # 启动开发环境
 ├── StopDevEnv.bat                                # 安全退出并弹出 U 盘
 └── README.md                                     # 本文件
@@ -239,7 +241,7 @@ D:/
 3. 设置 Arduino 环境变量，确保只使用 U 盘内的包。
 4. 如果已安装 ImDisk 且以管理员身份运行，则创建 `R:` RAMDisk。
 5. 无 RAMDisk 时回退到 `%TEMP%\DevUDisk_build`。
-6. 在隔离的 `PATH` 下启动便携版 VS Code。
+6. 在隔离的 `PATH` 下启动便携版 VS Code:，并打开 `DevUDisk.code-workspace` 多工程工作区。
 
 ### StopDevEnv.bat
 

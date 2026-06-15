@@ -16,23 +16,25 @@
 脚本会：
 1. 自动识别 U 盘盘符（D:、E:、F: 等均可）。
 2. 校验 U 盘内 Arduino 环境完整性。
-3. 启动 VS Code 便携版并打开 `Projects` 目录。
+3. 启动 VS Code: 便携版并打开 **`DevUDisk.code-workspace`** 工作区（包含 Blink、WiFiScan 等示例工程）。
 
 ## 3. 打开示例工程
 
-在 VS Code 左侧资源管理器中点击：
+在 VS Code: 左侧资源管理器中点击工作区里的：
 
 ```text
-Projects → Blink → Blink.ino
+Blink → Blink.ino
 ```
 
 ## 4. 编译工程
 
-按 **`Ctrl + Shift + B`**，选择：
+按 **`Ctrl + Shift + B`** 直接运行默认构建任务：
 
 - **Arduino: Build (RAMDisk)**：编译当前工程。
 
 首次编译会花费较长时间（约 1–3 分钟），因为需要编译 ESP32 核心；后续编译会使用缓存，速度显著提升。
+
+> 如果要在工作区里添加自己的工程，右键左侧资源管理器空白处 → **Add Folder to Workspace**。
 
 ## 5. 上传固件
 

@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 setlocal EnableDelayedExpansion
 
 :: ============================================================
@@ -68,8 +68,8 @@ echo [INFO] 构建根目录：%ARDUINO_BUILD_BASE%
 set "PATH=%U_DISK%\PortableEnv\arduino-cli;C:\Windows\System32;C:\Windows\System32\WindowsPowerShell\v1.0"
 echo [INFO] PATH 已隔离：%PATH%
 
-:: 8. 启动 VS Code 并打开 Projects 目录
-start "" "%U_DISK%\PortableEnv\VSCode\Code.exe" "%U_DISK%\Projects"
+:: 8. 启动 VS Code: 并打开多工程工作区
+start "" "%U_DISK%\PortableEnv\VSCode\Code.exe" "%U_DISK%\DevUDisk.code-workspace"
 
 echo [INFO] 开发环境已启动。
 endlocal
