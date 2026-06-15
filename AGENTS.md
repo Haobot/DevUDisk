@@ -17,14 +17,15 @@
 
 ```text
 D:/
-├── .git/                         # Git 仓库
-├── Doc/
-│   └── DevUDisk_Plan_v1.0.md     # 《编程 U 盘设计与制作方案 v1.0》（原版 ESP-IDF 规划）
-├── Docs/
-│   ├── DevUDisk_ActionPlan_v1.0.md  # 当前开发行动规划
-│   ├── QuickStart.md                # 5 分钟上手指南
-│   └── DeliveryNotes.md             # 第一阶段交付说明
-├── PortableEnv/                  # 便携工具链（被 .gitignore 排除）
+├── .git/                                         # Git 仓库
+├── Doc/                                          # 用户说明文档
+│   └── DevUDisk_User_QuickStart_v1.0.md          # 5 分钟上手指南
+├── Docs_Dev/                                     # 开发者/代理文档
+│   ├── DevUDisk_DocumentRules_v1.0.md            # 文档管理规则
+│   ├── DevUDisk_Plan_v1.0.md                     # 《编程 U 盘设计与制作方案 v1.0》（原版 ESP-IDF 规划）
+│   ├── DevUDisk_Plan_ActionPlan_v1.0.md          # 当前开发行动规划
+│   └── DevUDisk_Plan_DeliveryNotes_v1.0.md       # 第一阶段交付说明
+├── PortableEnv/                                  # 便携工具链（被 .gitignore 排除）
 │   ├── _env_init.bat             # 环境校验脚本
 │   ├── arduino-cli/              # Arduino-CLI + ESP32 核心包
 │   ├── VSCode/                   # VS Code 便携版
@@ -85,10 +86,13 @@ ESP32_DEV (U:\)
 │   └── WiFiScan\
 │       ├── WiFiScan.ino
 │       └── .vscode\tasks.json
-└── Docs\
+├── Doc\
+│   └── DevUDisk_User_QuickStart_v1.0.md
+└── Docs_Dev\
+    ├── DevUDisk_DocumentRules_v1.0.md
     ├── DevUDisk_Plan_v1.0.md
-    ├── DevUDisk_ActionPlan_v1.0.md
-    └── QuickStart.md
+    ├── DevUDisk_Plan_ActionPlan_v1.0.md
+    └── DevUDisk_Plan_DeliveryNotes_v1.0.md
 ```
 
 ### 2.2 核心运行原则
@@ -112,7 +116,8 @@ ESP32_DEV (U:\)
   - `PortableEnv\Drivers\`：串口驱动。
 - **用户空间**
   - `Projects\`：学生工程目录。
-  - `Docs\`：离线文档。
+  - `Doc\`：面向最终用户的说明文档。
+  - `Docs_Dev\`：面向开发者/代理的设计与规划文档。
 
 ---
 
@@ -163,7 +168,10 @@ arduino-cli compile --fqbn esp32:esp32:esp32 --build-path %ARDUINO_BUILD_BASE%\B
 ### 5.2 文档
 
 - 项目主要使用**中文**编写方案与说明。
-- 新文档应放置在 `Docs/` 目录下，并采用 Markdown 格式。
+- 文档分两类存放：
+  - 开发者/代理文档放入 `Docs_Dev/`，命名格式 `DevUDisk_{继承关系}_{含义}_v{版本号}.md`。
+  - 用户说明文档放入 `Doc/`，命名格式 `DevUDisk_User_{含义}_v{版本号}.md`。
+- 具体规则参见 `Docs_Dev/DevUDisk_DocumentRules_v1.0.md`，后续必须严格执行。
 - 版本号、生效日期、状态字段需与 `DevUDisk_Plan_v1.0.md` 保持一致的风格。
 
 ---
@@ -230,7 +238,7 @@ arduino-cli compile --fqbn esp32:esp32:esp32 --build-path %ARDUINO_BUILD_BASE%\B
 
 ## 9. 给代理的实用提示
 
-- 修改前请先检查 `Doc/DevUDisk_Plan_v1.0.md` 与 `Docs/DevUDisk_ActionPlan_v1.0.md`。
+- 修改前请先检查 `Docs_Dev/DevUDisk_Plan_v1.0.md` 与 `Docs_Dev/DevUDisk_Plan_ActionPlan_v1.0.md`。
 - 当前仓库没有 `pyproject.toml`、`package.json`、`Cargo.toml` 或 CI/CD 配置文件。
 - 由于项目面向教学场景，脚本与文档应优先保证**可读性**和**可维护性**，避免过度工程化。
 - 若需引入新依赖，必须确保其能运行在便携/离线环境中。

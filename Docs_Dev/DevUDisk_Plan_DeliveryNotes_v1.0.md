@@ -44,9 +44,9 @@
 
 | 文件 | 说明 |
 | :--- | :--- |
-| `Doc\DevUDisk_Plan_v1.0.md` | 原始设计与制作方案 |
-| `Docs\DevUDisk_ActionPlan_v1.0.md` | 当前开发行动规划 |
-| `Docs\QuickStart.md` | 5 分钟上手指南 |
+| `Docs_Dev\DevUDisk_Plan_v1.0.md` | 原始设计与制作方案 |
+| `Docs_Dev\DevUDisk_Plan_ActionPlan_v1.0.md` | 当前开发行动规划 |
+| `Doc\DevUDisk_User_QuickStart_v1.0.md` | 5 分钟上手指南 |
 | `AGENTS.md` | 项目代理指南 |
 
 ---
