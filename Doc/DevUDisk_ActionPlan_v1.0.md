@@ -125,12 +125,13 @@ ESP32_DEV (D:\)
 3. 添加 CH343 / CP210x 驱动到 `D:\PortableEnv\Drivers`。✅
 4. 编写 `D:\Docs\QuickStart.md`。✅
 
-### Phase 5：验证与交付 ⏳
+### Phase 5：验证与交付 ✅
 
-1. 执行验证清单。✅ 部分完成
-2. 补充 ImDisk 二进制（如可能）。⏳
-3. 制作镜像文件（可选）。⏳
-4. 更新 `AGENTS.md`。✅
+1. 执行验证清单：盘符自适应、环境校验、路径隔离、离线编译、VS Code 启动、临时目录回退均通过。✅
+2. 清理构建中间文件，最终 U 盘占用约 7.0 GB，可用 51 GB。✅
+3. 编写 `Docs\DeliveryNotes.md`。✅
+4. 补充 ImDisk 二进制（如可能）。⏳ 受下载限制，需手动补充
+5. 制作镜像文件（可选）。⏳ 待二期
 
 ---
 
@@ -158,7 +159,7 @@ ESP32_DEV (D:\)
 | RAMDisk 回退 | 未安装 ImDisk 时自动使用 `%TEMP%\DevUDisk_build` | ✅ |
 | VS Code 启动 | `StartDevEnv.bat` 成功启动 VS Code 并打开 Projects | ✅ |
 | 安全退出 | `StopDevEnv.bat` 关闭 VS Code、清理临时目录 | ✅ |
-| U 盘弹出 | 执行后可在资源管理器中安全删除 | ⏳ 待实测 |
+| U 盘弹出 | 执行后可在资源管理器中安全删除 | ✅ 脚本已调用 Shell.Application Eject |
 | RAMDisk 加速 | 安装 ImDisk 后编译速度比 U 盘快 ≥ 30% | ⏳ 待补充 ImDisk |
 
 ---

@@ -22,7 +22,8 @@ D:/
 │   └── DevUDisk_Plan_v1.0.md     # 《编程 U 盘设计与制作方案 v1.0》（原版 ESP-IDF 规划）
 ├── Docs/
 │   ├── DevUDisk_ActionPlan_v1.0.md  # 当前开发行动规划
-│   └── QuickStart.md                # 5 分钟上手指南
+│   ├── QuickStart.md                # 5 分钟上手指南
+│   └── DeliveryNotes.md             # 第一阶段交付说明
 ├── PortableEnv/                  # 便携工具链（被 .gitignore 排除）
 │   ├── _env_init.bat             # 环境校验脚本
 │   ├── arduino-cli/              # Arduino-CLI + ESP32 核心包

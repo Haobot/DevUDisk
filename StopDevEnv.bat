@@ -1,4 +1,4 @@
-﻿﻿@echo off
+﻿@echo off
 setlocal
 
 :: ============================================================
@@ -14,11 +14,11 @@ echo [INFO] U 盘盘符：%U_DISK%
 
 :: 2. 结束 VS Code 进程
 echo [INFO] 正在关闭 VS Code...
-taskkill /F /IM Code.exe >nul 2>&1
-timeout /t 2 >nul
+taskkill /F /IM Code.exe >/dev/null 2>&1
+C:\Windows\System32\timeout.exe /t 2 >/dev/null
 
 :: 3. 判断当前是否拥有管理员权限
-net session >nul 2>&1
+net session >/dev/null 2>&1
 set "IS_ADMIN=0"
 if %errorlevel% equ 0 set "IS_ADMIN=1"
 
@@ -50,5 +50,5 @@ echo [INFO] 正在弹出 U 盘 %U_DISK% ...
 powershell -NoProfile -Command "$disk='%U_DISK%'.Replace(':',''); try { (New-Object -comObject Shell.Application).Namespace(17).ParseName($disk+':').InvokeVerb('Eject') } catch { Write-Host '[WARN] 弹出 U 盘失败，请手动安全删除。' }"
 
 echo [INFO] 可以安全拔出 U 盘。
-timeout /t 3 >nul
+C:\Windows\System32\timeout.exe /t 3 >/dev/null
 endlocal

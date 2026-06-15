@@ -29,7 +29,7 @@ set "ARDUINO_DIRECTORIES_DOWNLOADS=%U_DISK%\PortableEnv\arduino-cli\staging"
 echo [INFO] Arduino 数据目录：%ARDUINO_DIRECTORIES_DATA%
 
 :: 4. 判断当前是否拥有管理员权限
-net session >nul 2>&1
+net session >/dev/null 2>&1
 set "IS_ADMIN=0"
 if %errorlevel% equ 0 set "IS_ADMIN=1"
 
@@ -64,7 +64,7 @@ if %USE_RAMDISK% equ 0 (
 if not exist "%ARDUINO_BUILD_BASE%" mkdir "%ARDUINO_BUILD_BASE%"
 echo [INFO] 构建根目录：%ARDUINO_BUILD_BASE%
 
-:: 7. 构造隔离 PATH（仅包含 U 盘内工具），在启动 VS Code 前生效
+:: 7. 构造隔离 PATH（仅包含 U 盘内工具与最小系统路径），在启动 VS Code 前生效
 set "PATH=%U_DISK%\PortableEnv\arduino-cli;C:\Windows\System32;C:\Windows\System32\WindowsPowerShell\v1.0"
 echo [INFO] PATH 已隔离：%PATH%
 
