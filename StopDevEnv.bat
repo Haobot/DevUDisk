@@ -23,16 +23,33 @@ if %errorlevel% equ 0 set "IS_ADMIN=1"
 set "AIMLL=%U_DISK%\PortableEnv\ImDisk\aim_cli\x64\aim_ll.exe"
 set "RAMSERVICE=%U_DISK%\PortableEnv\ImDisk\RamService.exe"
 set "IMDISK=%U_DISK%\PortableEnv\ImDisk\imdisk.exe"
-set "RAMDISK_LETTER=R:"
+:: 优先读取 StartDevEnv.bat 动态选中的盘符
+set "RAMDISK_LETTER="
+if exist "%TEMP%\DevUDisk_ramdisk_letter.txt" (
+    for /f "usebackq delims=" %%L in ("%TEMP%\DevUDisk_ramdisk_letter.txt") do set "RAMDISK_LETTER=%%L"
+)
 :: 4.1 优先使用 aim_ll 直接卸载 RAMDisk
 if exist "%AIMLL%" (
     if %IS_ADMIN% equ 1 (
-        echo [INFO] 正在使用 aim_ll 卸载 RAMDisk %RAMDISK_LETTER% ...
-        "%AIMLL%" -d -m %RAMDISK_LETTER%
-        if !errorlevel! equ 0 (
-            echo [INFO] RAMDisk 已卸载。
+        if defined RAMDISK_LETTER (
+            echo [INFO] 正在使用 aim_ll 卸载 RAMDisk %RAMDISK_LETTER% ...
+            "%AIMLL%" -d -m %RAMDISK_LETTER%
+            if !errorlevel! neq 0 (
+                echo [WARN] 常规卸载失败，尝试强制卸载 ...
+                "%AIMLL%" -D -m %RAMDISK_LETTER%
+            )
+            if !errorlevel! equ 0 (
+                echo [INFO] RAMDisk 已卸载。
+            ) else (
+                echo [WARN] aim_ll 卸载 RAMDisk 可能失败，请手动检查。
+            )
         ) else (
-            echo [WARN] aim_ll 卸载 RAMDisk 可能失败，请手动检查。
+            echo [WARN] 未找到 RAMDisk 盘符记录，将跳过按盘符卸载。
+        )
+        REM 清理所有遗留的 AIM RAMDisk（包括之前未成功卸载的）
+        if exist "%U_DISK%\PortableEnv\_cleanup_ramdisks.ps1" (
+            echo [INFO] 正在扫描并清理所有遗留的 AIM RAMDisk ...
+            powershell -NoProfile -ExecutionPolicy Bypass -File "%U_DISK%\PortableEnv\_cleanup_ramdisks.ps1" -AimLlPath "%AIMLL%"
         )
     ) else (
         echo [WARN] 未以管理员身份运行，跳过 RAMDisk 卸载。
@@ -82,6 +99,8 @@ echo [INFO] 正在清理临时构建目录...
 if exist "%TEMP%\DevUDisk_build" (
     rmdir /S /Q "%TEMP%\DevUDisk_build"
 )
+:: 清理 RAMDisk 盘符记录文件
+if exist "%TEMP%\DevUDisk_ramdisk_letter.txt" del /Q "%TEMP%\DevUDisk_ramdisk_letter.txt" >nul 2>&1
 :: 6. 弹出 U 盘
 echo [INFO] 正在弹出 U 盘 %U_DISK% ...
 powershell -NoProfile -Command "$disk='%U_DISK%'.Replace(':',''); try { (New-Object -comObject Shell.Application).Namespace(17).ParseName($disk+':').InvokeVerb('Eject') } catch { Write-Host '[WARN] 弹出 U 盘失败，请手动安全删除。' }"
