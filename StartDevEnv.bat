@@ -38,28 +38,7 @@ set "IMDISK=%U_DISK%\PortableEnv\ImDisk\imdisk.exe"
 set "RAMDISK_LETTER=R:"
 set "RAMDISK_FALLBACK_LETTERS=Z: Y: Q: P: O:"
 echo [INFO] 正在检查 RAMDisk 盘符可用性 ...
-set "PICKED_LETTER="
-set "_CANDIDATE=%RAMDISK_LETTER%"
-call :try_pick_letter
-if not defined PICKED_LETTER (
-    for %%L in (%RAMDISK_FALLBACK_LETTERS%) do (
-        if not defined PICKED_LETTER (
-            set "_CANDIDATE=%%L"
-            call :try_pick_letter
-        )
-    )
-)
-if not defined PICKED_LETTER (
-    echo [WARN] 首选 RAMDisk 盘符 %RAMDISK_LETTER% 与所有回退盘符均不可用，将跳过 RAMDisk 直接回退到本地临时目录。
-    set "RAMDISK_LETTER="
-) else if /i not "!PICKED_LETTER!"=="!RAMDISK_LETTER!" (
-    echo [WARN] 首选 RAMDisk 盘符 !RAMDISK_LETTER! 已被占用，自动改用 !PICKED_LETTER!。
-    set "RAMDISK_LETTER=!PICKED_LETTER!"
-) else (
-    echo [INFO] RAMDisk 盘符 !RAMDISK_LETTER! 可用。
-)
-set "PICKED_LETTER="
-set "_CANDIDATE="
+call :pick_ramdisk_letter
 echo [INFO] 选定的 RAMDisk 盘符：!RAMDISK_LETTER!
 :: 将选中的盘符写入临时文件，供 StopDevEnv.bat 读取并按相同盘符卸载
 set "RAMDISK_LETTER_FILE=%TEMP%\DevUDisk_ramdisk_letter.txt"
@@ -67,6 +46,22 @@ if defined RAMDISK_LETTER (echo %RAMDISK_LETTER%> "%RAMDISK_LETTER_FILE%") else 
 set "USE_RAMDISK=0"
 :: 如果未找到可用盘符，直接跳过 RAMDisk 创建，避免把空盘符传给底层工具
 if not defined RAMDISK_LETTER goto :ramdisk_done
+
+REM 创建前先清理可能遗留的 AIM RAMDisk，避免重复建立
+if %IS_ADMIN% equ 1 (
+    if exist "%AIMLL%" (
+        if exist "%U_DISK%\PortableEnv\_cleanup_ramdisks.ps1" (
+            echo [INFO] 正在清理可能遗留的 RAMDisk ...
+            powershell -NoProfile -ExecutionPolicy Bypass -File "%U_DISK%\PortableEnv\_cleanup_ramdisks.ps1" -AimLlPath "%AIMLL%"
+        )
+    )
+)
+REM 清理后重新选择盘符，确保默认盘符被释放后能优先使用
+call :pick_ramdisk_letter
+echo [INFO] 清理后选定的 RAMDisk 盘符：!RAMDISK_LETTER!
+if not defined RAMDISK_LETTER goto :ramdisk_done
+REM 盘符可能已改变，重新写入临时文件
+if defined RAMDISK_LETTER (echo %RAMDISK_LETTER%> "%RAMDISK_LETTER_FILE%") else (del /Q "%RAMDISK_LETTER_FILE%" 2>nul)
 
 :: 5.1 优先使用 aim_ll 直接创建 RAMDisk（最可靠，不依赖 Windows 服务生命周期）
 if exist "%AIMLL%" (
@@ -93,6 +88,8 @@ if exist "%AIMLL%" (
             vol %RAMDISK_LETTER% >nul 2>&1
             if !errorlevel! equ 0 (
                 echo [INFO] RAMDisk 创建成功。
+                REM 关闭因新卷挂载而自动打开的资源管理器窗口，保持静默
+                powershell -NoProfile -Command "& {$shell=New-Object -ComObject Shell.Application; $path='%RAMDISK_LETTER%'; $shell.Windows() | Where-Object { ($_.Document -and $_.Document.Folder -and ($_.Document.Folder.Self.Path -eq $path)) -or ($_.LocationURL -like ('file:///' + $path + '*')) } | ForEach-Object { $_.Quit() }}" >nul 2>&1
                 set "ARDUINO_BUILD_BASE=%RAMDISK_LETTER%\arduino_build"
                 set "USE_RAMDISK=1"
             ) else (
@@ -223,6 +220,36 @@ echo [INFO] PATH 已隔离：%PATH%
 :: 9. 启动 VS Code: 并打开多工程工作区
 start "" "%U_DISK%\PortableEnv\VSCode\Code.exe" "%U_DISK%\DevUDisk.code-workspace"
 echo [INFO] 开发环境已启动。
+
+:: ============================================================
+:: 子例程：选择可用 RAMDisk 盘符
+:: 输入：%RAMDISK_LETTER%（首选盘符）, %RAMDISK_FALLBACK_LETTERS%（回退列表）
+:: 输出：设置 RAMDISK_LETTER 为可用盘符；若均不可用则置空
+:: ============================================================
+:pick_ramdisk_letter
+set "PICKED_LETTER="
+set "_CANDIDATE=%RAMDISK_LETTER%"
+call :try_pick_letter
+if not defined PICKED_LETTER (
+    for %%L in (%RAMDISK_FALLBACK_LETTERS%) do (
+        if not defined PICKED_LETTER (
+            set "_CANDIDATE=%%L"
+            call :try_pick_letter
+        )
+    )
+)
+if not defined PICKED_LETTER (
+    echo [WARN] 首选 RAMDisk 盘符 %RAMDISK_LETTER% 与所有回退盘符均不可用，将跳过 RAMDisk 直接回退到本地临时目录。
+    set "RAMDISK_LETTER="
+) else if /i not "!PICKED_LETTER!"=="!RAMDISK_LETTER!" (
+    echo [WARN] 首选 RAMDisk 盘符 !RAMDISK_LETTER! 已被占用，自动改用 !PICKED_LETTER!。
+    set "RAMDISK_LETTER=!PICKED_LETTER!"
+) else (
+    echo [INFO] RAMDisk 盘符 !RAMDISK_LETTER! 可用。
+)
+set "PICKED_LETTER="
+set "_CANDIDATE="
+exit /b 0
 
 :: ============================================================
 :: 子例程：检查候选盘符是否可用，若可用则写入 PICKED_LETTER
