@@ -1,3 +1,4 @@
+<!-- From: D:/AGENTS.md -->
 # DevUDisk 项目代理指南
 
 > 本文档面向需要在该仓库中工作的 AI 编码代理。阅读前假设你对项目一无所知。
@@ -26,6 +27,8 @@ D:/
 │   └── DevUDisk_User_QuickStart_v1.0.md          # 5 分钟上手指南
 ├── Doc_Dev/                                      # 开发者/代理文档
 │   ├── DevUDisk_DocumentRules_v1.1.md            # 文档管理规则
+│   ├── DevUDisk_Design_SilentRamdisk_v1.0.md     # 静默 RAMDisk 设计说明
+│   ├── DevUDisk_Plan_SilentRamdisk_v1.0.md       # 静默 RAMDisk 规划
 │   └── DevUDisk_Plan_v1.0/                       # Plan v1.0 文档族
 │       ├── DevUDisk_Plan_v1.0.md                 # 《编程 U 盘设计与制作方案 v1.0》（原版 ESP-IDF 规划）
 │       ├── DevUDisk_Plan_ActionPlan_v1.0.md      # 当前开发行动规划
@@ -33,6 +36,8 @@ D:/
 ├── PortableEnv/                                  # 便携工具链（被 .gitignore 排除）
 │   ├── _env_init.bat                             # 环境校验脚本
 │   ├── _build_with_progress.ps1                  # 带进度点与用时的编译包装脚本
+│   ├── _cleanup_ramdisks.ps1                     # 清理遗留 AIM RAMDisk 脚本
+│   ├── _git_failsafe.bat                         # Git 仓库自检与备份恢复脚本
 │   ├── arduino-cli/                              # Arduino-CLI 1.4.1 + ESP32 核心包
 │   │   ├── arduino-cli.exe
 │   │   └── packages/
@@ -42,21 +47,33 @@ D:/
 │   │   ├── Code.exe
 │   │   └── data/                                 # 便携配置、插件、用户数据
 │   ├── ImDisk/                                   # RAMDisk 工具目录
-│   │   ├── aim_cli/                              # Arsenal Image Mounter 命令行工具（含 aim_ll.exe、aimapi.dll）
+│   │   ├── aim_cli/                              # Arsenal Image Mounter 命令行工具（含 x64/x86/arm/arm64 的 aim_ll.exe、aimapi.dll）
+│   │   ├── aimapi.dll                            # 供 RamService 加载的 API 库
 │   │   ├── RamService.exe                        # Arsenal RAM-disk 服务程序（备用）
 │   │   └── RamdiskUI.exe                         # Arsenal RAM-disk GUI 配置工具（备用）
 │   └── Drivers/                                  # 串口驱动
 │       ├── CH343/CH341SER/                       # CH343/CH340 驱动
 │       └── CP210x/                               # CP210x 驱动
 ├── Projects/                                     # 学生示例工程（被 .gitignore 排除）
+│   ├── _template_.vscode/                        # tasks.json 模板
 │   ├── Blink/
 │   │   ├── Blink.ino
 │   │   └── .vscode/tasks.json
-│   └── WiFiScan/
-│       ├── WiFiScan.ino
-│       └── .vscode/tasks.json
+│   ├── WiFiScan/
+│   │   ├── WiFiScan.ino
+│   │   └── .vscode/tasks.json
+│   └── MUS4_FW/                                  # MUS4 遥控车辆/机器人固件（独立子项目，含自有 AGENTS.md）
+│       ├── MUS4_FW.ino
+│       ├── *.h / *.cpp
+│       ├── arduino-cli.py
+│       ├── arduino-cli-wsl.ps1
+│       ├── config.yaml / sketch.yaml / wslbuild.yaml
+│       ├── tests/
+│       ├── tools/
+│       └── AGENTS.md
 ├── StartDevEnv.bat                               # 开发环境启动入口
-└── StopDevEnv.bat                                # 安全退出脚本
+├── StopDevEnv.bat                                # 安全退出脚本
+└── DevUDisk.code-workspace                       # 多工程 VS Code 工作区
 ```
 
 > **注意：** `PortableEnv/` 与 `Projects/` 被 `.gitignore` 排除，版本控制仅追踪脚本与文档。实际交付的 U 盘必须包含完整的 `PortableEnv/` 目录。
@@ -71,11 +88,11 @@ D:/
 | :--- | :--- | :--- |
 | 操作系统 | Windows 原生 | 机房兼容性优先，不使用 WSL |
 | 文件系统 | NTFS（4K 簇） | 卷标 `ESP32_DEV`，簇大小 4096 字节 |
-| 启动脚本 | Windows Batch (`.bat`) | `StartDevEnv.bat`、`StopDevEnv.bat`、`_env_init.bat` |
+| 启动脚本 | Windows Batch (`.bat`) | `StartDevEnv.bat`、`StopDevEnv.bat`、`_env_init.bat`、`_git_failsafe.bat` |
 | 编辑器 | VS Code 便携版 | 通过 `VSCode\data` 目录锁定配置 |
 | 开发框架 | Arduino-ESP32 | `esp32:esp32@3.3.10-cn`，离线预装 |
 | 命令入口 | Arduino-CLI | `1.4.1`（Commit: e39419312） |
-| 编译加速 | RAMDisk（Arsenal Image Mounter + aim_ll.exe，可选） | 优先 `R:\arduino_build\[ProjectName]`；无 aim_ll 时回退到 RamService/ImDisk，最后回退到 `%TEMP%\DevUDisk_build` |
+| 编译加速 | RAMDisk（Arsenal Image Mounter + aim_ll.exe，可选） | 优先动态可用盘符；无 aim_ll 时回退到 RamService/ImDisk，最后回退到 `%TEMP%\DevUDisk_build` |
 | 串口驱动 | CH343/CH340、CP210x | 位于 `PortableEnv\Drivers\` |
 
 ### 2.1 关键目录占用（实测）
@@ -85,7 +102,7 @@ D:/
 | `PortableEnv\arduino-cli\` | ~6.0 GB | Arduino-CLI + ESP32 核心包与工具链 |
 | `PortableEnv\VSCode\` | ~837 MB | VS Code 便携版及运行时数据 |
 | `PortableEnv\Drivers\` | ~1.8 MB | CH343/CH340 与 CP210x 驱动 |
-| `Projects\` | ~18 KB | 示例工程源码 |
+| `Projects\` | ~18 KB | 示例工程源码（不含 MUS4_FW 本地库与构建产物） |
 
 ### 2.2 核心运行原则
 
@@ -97,18 +114,23 @@ D:/
 
 **`StartDevEnv.bat`**：
 1. 通过 `%~d0` 计算 U 盘盘符。
-2. 调用 `PortableEnv\_env_init.bat` 校验环境。
-3. 设置 Arduino 环境变量（`ARDUINO_DIRECTORIES_DATA`、`ARDUINO_DIRECTORIES_USER`、`ARDUINO_DIRECTORIES_DOWNLOADS`）。
-4. 检测是否以管理员运行；若存在 `PortableEnv\ImDisk\aim_cli\x64\aim_ll.exe` 且为管理员，则直接创建 `R:` RAMDisk（大小 2GB，NTFS）；否则依次回退到 RamService 服务、ImDisk。
-5. 无 RAMDisk 时回退到 `%TEMP%\DevUDisk_build`。
-6. 配置 Git：优先 U 盘内置 `PortableEnv\Git\cmd\git.exe`，其次回退到常见本机 Git 路径。
-7. 构造隔离 `PATH` 并启动 VS Code，打开 `Projects` 目录。
+2. 调用 `PortableEnv\_git_failsafe.bat` 备份 Git 关键状态。
+3. 调用 `PortableEnv\_env_init.bat` 校验环境。
+4. 设置 Arduino 环境变量（`ARDUINO_DIRECTORIES_DATA`、`ARDUINO_DIRECTORIES_USER`、`ARDUINO_DIRECTORIES_DOWNLOADS`）。
+5. 检测是否以管理员运行；动态选择可用 RAMDisk 盘符（默认 `R:`，回退 `Z:` `Y:` `Q:` `P:` `O:`）。
+6. 若存在 `PortableEnv\ImDisk\aim_cli\x64\aim_ll.exe` 且为管理员，则直接创建 RAMDisk（大小 2GB，NTFS）；创建前会运行 `_cleanup_ramdisks.ps1` 清理遗留 AIM RAMDisk。
+7. 否则依次回退到 RamService 服务、ImDisk。
+8. 无 RAMDisk 时回退到 `%TEMP%\DevUDisk_build`。
+9. 配置 Git：优先 U 盘内置 `PortableEnv\Git\cmd\git.exe`，其次回退到常见本机 Git 路径。
+10. 构造隔离 `PATH` 并启动 VS Code，打开 `DevUDisk.code-workspace` 多工程工作区。
 
 **`StopDevEnv.bat`**：
-1. 结束 VS Code 进程。
-2. 若存在 aim_ll 且为管理员，使用 `aim_ll -d -m R:` 卸载 `R:` RAMDisk；否则依次回退到停止 RamService 服务、ImDisk。
-3. 清理 `%TEMP%\DevUDisk_build`。
-4. 调用 PowerShell 弹出 U 盘。
+1. 调用 `PortableEnv\_git_failsafe.bat` 备份 Git 关键状态。
+2. 结束 VS Code 进程。
+3. 若存在 aim_ll 且为管理员，使用 `aim_ll -d -m <盘符>` 卸载 RAMDisk；随后再次调用 `_cleanup_ramdisks.ps1` 清理所有遗留 AIM RAMDisk。
+4. 否则依次回退到停止 RamService 服务、ImDisk。
+5. 清理 `%TEMP%\DevUDisk_build` 与 RAMDisk 盘符记录文件。
+6. 调用 PowerShell 弹出 U 盘。
 
 **`PortableEnv\_env_init.bat`**：
 1. 校验 U 盘剩余空间 >= 5 GB。
@@ -118,19 +140,30 @@ D:/
 5. 校验 VS Code 便携版是否存在（不存在仅警告）。
 6. 打印 Arduino-CLI 版本。
 
+**`PortableEnv\_git_failsafe.bat`**：
+1. 检查 `.git` 目录完整性（config、HEAD、index）。
+2. 自动备份关键元数据（config, HEAD, index, refs）到 `PortableEnv\git_recovery`。
+3. 在检测到损坏或丢失时，自动从最近备份恢复；保留最近 5 个备份。
+
+**`PortableEnv\_cleanup_ramdisks.ps1`**：
+1. 扫描所有 Arsenal Image Mounter 设备。
+2. 强制分离所有类型为 Virtual Memory / Image in memory 的遗留 RAMDisk。
+3. 需要管理员权限（`#Requires -RunAsAdministrator`）。
+
 ---
 
 ## 3. 代码组织
 
 ### 3.1 入口脚本
 
-- **`StartDevEnv.bat`**：计算 U 盘盘符、调用 `_env_init.bat`、构造隔离 `PATH`、创建 RAMDisk（可选）、设置 Arduino 环境变量、启动 VS Code。
-- **`StopDevEnv.bat`**：结束 VS Code、卸载 RAMDisk（可选）、清理临时构建目录、弹出 U 盘。
+- **`StartDevEnv.bat`**：计算 U 盘盘符、Git failsafe、调用 `_env_init.bat`、构造隔离 `PATH`、创建 RAMDisk（可选）、设置 Arduino 环境变量、启动 VS Code。
+- **`StopDevEnv.bat`**：Git failsafe、结束 VS Code、卸载 RAMDisk（可选）、清理临时构建目录、弹出 U 盘。
 
 ### 3.2 环境初始化
 
 - **`PortableEnv\_env_init.bat`**：校验 U 盘剩余空间、Arduino-CLI 可执行性、ESP32 核心包完整性、VS Code 便携版存在性。
 - **`PortableEnv\_git_failsafe.bat`**：Git 仓库自检脚本。检查 `.git` 目录完整性，自动备份关键元数据（config, HEAD, index, refs）到 `PortableEnv\git_recovery`。在检测到损坏或丢失时，自动从最近备份恢复。
+- **`PortableEnv\_cleanup_ramdisks.ps1`**：清理遗留 AIM RAMDisk，确保启动前无脏盘符占用。
 
 ### 3.3 工具目录
 
@@ -140,13 +173,17 @@ D:/
 - **`PortableEnv\Git\`**（可选）：Portable Git for Windows，解压后 `cmd\git.exe` 可直接使用。
 - **`PortableEnv\_build_with_progress.ps1`**：PowerShell 编译包装脚本，为 arduino-cli 提供进度点与总用时显示。
 - **`PortableEnv\ImDisk\`**：RAMDisk 工具目录。
-  - `aim_cli\x64\aim_ll.exe`：Arsenal Image Mounter 命令行工具，用于直接创建/删除 RAMDisk（推荐）。
+  - `aim_cli\x64\aim_ll.exe`：Arsenal Image Mounter 命令行工具，用于直接创建/删除 RAMDisk（推荐）。同时存在 x86、arm、arm64 版本。
   - `RamService.exe` / `RamdiskUI.exe`：Arsenal RAM-disk 服务与 GUI 工具（备用回退）。
-  - `aimapi.dll`：需要复制到 `ImDisk\` 根目录，供 RamService 加载。
+  - `aimapi.dll`：已复制到 `ImDisk\` 根目录，供 RamService 加载。
 
 ### 3.4 用户空间
 
 - **`Projects\`**：学生工程目录。
+  - `Blink/`、`WiFiScan/`：官方示例风格的最小 Arduino 工程。
+  - `MUS4_FW/`：独立的 MUS4 遥控车辆/机器人固件子项目，含自己的 `AGENTS.md`、`README.md`、`CLAUDE.md`、`CHANGELOG.md`、构建脚本与 Python 测试。**修改前请优先阅读 `Projects/MUS4_FW/AGENTS.md`。**
+- **`Projects\_template_.vscode\tasks.json`**：新增工程时可复制到 `<NewProject>/.vscode/tasks.json` 的模板。
+- **`DevUDisk.code-workspace`**：VS Code 多工程工作区，当前包含 `Blink`、`WiFiScan`、`MUS4_FW`。
 - **`Doc\`**：面向最终用户的说明文档。
 - **`Doc_Dev\`**：面向开发者/代理的设计与规划文档。
 
@@ -158,7 +195,7 @@ D:/
 - `/System Volume Information/`、`/$RECYCLE.BIN/`：Windows 系统目录。
 - `Thumbs.db`、`desktop.ini`、`*.tmp`、`*.log`：操作系统生成文件和临时文件。
 
-> 仓库内没有 `pyproject.toml`、`package.json`、`Cargo.toml` 或 CI/CD 配置文件。
+> 仓库内没有根级 `pyproject.toml`、`package.json`、`Cargo.toml` 或 CI/CD 配置文件。`Projects/MUS4_FW/` 子项目内部存在第三方库自带的 `pyproject.toml` / `package.json`（如 `libraries/FastLED/`、`provisioning_system/playwright_tests/`），但均不属于 DevUDisk 主仓库构建流程。
 
 ---
 
@@ -166,7 +203,7 @@ D:/
 
 ### 4.1 Arduino 工程构建流程
 
-在 VS Code 内通过任务完成。每个工程目录下的 `.vscode\tasks.json` 定义了两个任务：
+在 VS Code 内通过任务完成。普通示例工程（Blink / WiFiScan）目录下的 `.vscode\tasks.json` 定义了两个任务：
 
 - **`Arduino: Build (RAMDisk)`**（默认构建任务，`Ctrl + Shift + B`）：
   调用 `PortableEnv\_build_with_progress.ps1` 包装脚本执行 arduino-cli 编译，输出进度点与总用时：
@@ -178,6 +215,10 @@ D:/
   arduino-cli upload --fqbn esp32:esp32:esp32 --port COM3 --input-dir [Project]\build .
   ```
   > 上传前需根据实际串口号修改 `--port` 参数。
+
+`Projects/MUS4_FW/.vscode/tasks.json` 使用不同的 FQBN 与本地库路径：
+- FQBN：`esp32:esp32:esp32:PartitionScheme=min_spiffs`
+- `-Libs`：`${workspaceFolder}\libraries`
 
 ### 4.2 手动命令行构建示例
 
@@ -199,12 +240,26 @@ arduino-cli compile --fqbn esp32:esp32:esp32 --build-path %ARDUINO_BUILD_BASE%\B
 arduino-cli monitor -p COM3 -b esp32:esp32:esp32
 ```
 
-### 4.4 已验证项目
+### 4.4 MUS4_FW 子项目构建
+
+MUS4_FW 拥有独立的构建脚本与配置，详见 `Projects/MUS4_FW/AGENTS.md`。简要命令：
+
+```powershell
+# WSL 加速编译（推荐）
+.\arduino-cli-wsl.ps1 -Compile -Sketch MUS4_FW.ino
+
+# 原生 Python 封装
+python arduino-cli.py -c --sketch MUS4_FW.ino
+python arduino-cli.py -cu --sketch MUS4_FW.ino
+```
+
+### 4.5 已验证项目
 
 | 工程 | 验证结果 |
 | :--- | :--- |
 | `Projects\Blink` | ✅ 离线编译通过，固件 285084 字节 |
 | `Projects\WiFiScan` | ✅ 离线编译通过，固件 888548 字节 |
+| `Projects\MUS4_FW` | 由子项目自身 AGENTS.md 维护验证状态 |
 
 ---
 
@@ -222,13 +277,14 @@ arduino-cli monitor -p COM3 -b esp32:esp32:esp32
 - **禁止行为**：不要使用 `where python`、`where git`、`dir /s` 等依赖系统搜索的命令。
 - **管理员权限**：仅在创建/卸载 RAMDisk 时请求管理员权限；普通模式自动回退到本地临时构建目录。
 - **错误处理**：使用 `if %errorlevel% neq 0` 检查关键步骤返回值，失败时给出明确提示并暂停。
+- **RAMDisk 盘符**：禁止硬编码为固定 `R:`。启动脚本会动态选择可用盘符，并将最终盘符写入 `%TEMP%\DevUDisk_ramdisk_letter.txt` 供 `StopDevEnv.bat` 读取。
 
 ### 5.2 PowerShell 脚本
 
-- **用途**：`PortableEnv\_build_with_progress.ps1` 作为 arduino-cli 的编译包装脚本，提供进度点与总用时显示。
+- **用途**：`PortableEnv\_build_with_progress.ps1` 作为 arduino-cli 的编译包装脚本，提供进度点与总用时显示；`_cleanup_ramdisks.ps1` 用于清理遗留 AIM RAMDisk。
 - **编码**：保存为 **UTF-8 with BOM**，避免中文输出乱码。
 - **执行策略**：由 `tasks.json` 调用时通过 `-ExecutionPolicy Bypass` 参数绕过本地执行策略限制。
-- **进程管理**：使用 `System.Diagnostics.Process` 通过 `cmd.exe` 调用 `arduino-cli` 并重定向输出到临时文件，主线程通过 `WaitForExit(2000)` 循环打印进度点，确保退出码可靠获取且输出不与进度点混在一起。
+- **进程管理**：`build_with_progress.ps1` 使用 `System.Diagnostics.Process` 通过 `cmd.exe` 调用 `arduino-cli` 并重定向输出到临时文件，主线程通过 `WaitForExit(2000)` 循环打印进度点，确保退出码可靠获取且输出不与进度点混在一起。
 - **清理**：在 `finally` 块中删除临时输出文件并释放进程对象。
 
 ### 5.3 VS Code 配置
@@ -246,6 +302,7 @@ VS Code 便携配置位于 `PortableEnv\VSCode\data\user-data\User\settings.json
 - 每个工程独立目录，目录名与 `.ino` 主文件名一致（如 `Blink\Blink.ino`）。
 - 工程内 `.vscode\tasks.json` 使用环境变量 `${env:U_DISK}` 和 `${env:ARDUINO_BUILD_BASE}`，避免硬编码盘符。
 - 默认开发板型号为 `esp32:esp32:esp32`（ESP32 DevKit）。
+- MUS4_FW 使用 `esp32:esp32:esp32:PartitionScheme=min_spiffs` 并依赖本地 `libraries/` 目录。
 
 ### 5.5 文档
 
@@ -261,7 +318,7 @@ VS Code 便携配置位于 `PortableEnv\VSCode\data\user-data\User\settings.json
 
 ## 6. 测试策略
 
-当前无自动化测试，已执行手动验证清单：
+当前 DevUDisk 主仓库无自动化测试，已执行手动验证清单：
 
 | 测试项 | 预期结果 | 状态 |
 | :--- | :--- | :--- |
@@ -276,6 +333,9 @@ VS Code 便携配置位于 `PortableEnv\VSCode\data\user-data\User\settings.json
 | RAMDisk 加速 | 安装 Arsenal Image Mounter 驱动后编译速度比 U 盘快 ≥ 30% | ✅ 已实测（与本地 SSD 接近） |
 | Git 可用性 | VS Code 终端中 `git --version` 可执行 | ✅ |
 | 编译进度反馈 | 编译过程中显示流动进度点，结束后显示总用时 | ✅ |
+| RAMDisk 盘符回退 | `R:` 被占用时自动改用 `Z:` / `Y:` / `Q:` / `P:` / `O:` | ✅ |
+| 遗留 RAMDisk 清理 | `_cleanup_ramdisks.ps1` 可强制分离残留 AIM RAMDisk | ✅ |
+| Git Failsafe | `.git` 损坏时可从 `PortableEnv\git_recovery` 自动恢复 | ✅ |
 
 建议后续补充：
 1. Batch 脚本语法检查（可使用 `cmd /c` 或第三方 linter）。
@@ -283,6 +343,8 @@ VS Code 便携配置位于 `PortableEnv\VSCode\data\user-data\User\settings.json
 3. 已安装 Arduino IDE 的“脏机器”隔离测试。
 4. Arsenal Image Mounter 驱动安装后的 aim_ll RAMDisk 速度对比测试。
 5. 上传任务串口号自动检测（当前默认 `COM3`，需手动修改）。
+
+> **MUS4_FW 子项目** 拥有自己的 Python 测试套件，使用 `pytest tests/` 运行。详见 `Projects/MUS4_FW/AGENTS.md` 第 3 节。
 
 ---
 
@@ -295,12 +357,16 @@ VS Code 便携配置位于 `PortableEnv\VSCode\data\user-data\User\settings.json
 3. 解压 VS Code 便携版到 `PortableEnv\VSCode\`，创建 `data` 目录启用便携模式。
 4. 复制 CH343/CH340 与 CP210x 驱动到 `PortableEnv\Drivers\`。
 5. （可选）将 Portable Git for Windows 解压到 `PortableEnv\Git\`，确保 `PortableEnv\Git\cmd\git.exe` 存在。
-6. 编写并放置 `StartDevEnv.bat`、`StopDevEnv.bat`、`PortableEnv\_env_init.bat`、`PortableEnv\_build_with_progress.ps1`。
-7. 创建示例工程 `Projects\Blink`、`Projects\WiFiScan` 与 VS Code 任务。
+6. 部署 Arsenal Image Mounter 工具到 `PortableEnv\ImDisk\`：
+   - `aim_cli\x64\aim_ll.exe` 等架构版本
+   - `RamService.exe`、`RamdiskUI.exe`
+   - 将 `aimapi.dll` 复制到 `ImDisk\` 根目录
+7. 编写并放置 `StartDevEnv.bat`、`StopDevEnv.bat`、`PortableEnv\_env_init.bat`、`PortableEnv\_build_with_progress.ps1`、`PortableEnv\_cleanup_ramdisks.ps1`、`PortableEnv\_git_failsafe.bat`。
+8. 创建示例工程 `Projects\Blink`、`Projects\WiFiScan` 与 VS Code 任务；如包含 MUS4_FW，同步放置到 `Projects\MUS4_FW\`。
 
 ### 7.2 已知待完善项
 
-- **Arsenal Image Mounter 驱动**：`PortableEnv\ImDisk\` 已包含 `aim_cli\x64\aim_ll.exe`（推荐）、`RamService.exe` 与 `RamdiskUI.exe`（备用）。Arsenal Image Mounter 驱动需要预先在主机上安装，安装方法参见 https://github.com/tmcdos/ramdisk 的 README（通常使用 `aim_ll.exe --install ..\..` 自动安装驱动）。安装驱动后，以管理员模式运行 `StartDevEnv.bat` 即可自动创建 `R:` RAMDisk。
+- **Arsenal Image Mounter 驱动**：`PortableEnv\ImDisk\` 已包含 `aim_cli\x64\aim_ll.exe`（推荐）、`RamService.exe` 与 `RamdiskUI.exe`（备用）。Arsenal Image Mounter 驱动需要预先在主机上安装，安装方法参见 https://github.com/tmcdos/ramdisk 的 README（通常使用 `aim_ll.exe --install ..\..` 自动安装驱动）。安装驱动后，以管理员模式运行 `StartDevEnv.bat` 即可自动创建 RAMDisk。
 - **ESP-IDF 支持**：本机 `C:\Espressif` 可作为二期移植来源。
 - **AI 辅助**：Continue 插件尚未预装，需联网下载 `.vsix` 后离线安装。
 - **Portable Git**：脚本已支持自动识别 `PortableEnv\Git\cmd\git.exe`；如交付盘尚未内置，可从 https://git-scm.com/download/win 下载 64-bit Portable 版并解压到 `PortableEnv\Git\`。
@@ -324,14 +390,20 @@ VS Code 便携配置位于 `PortableEnv\VSCode\data\user-data\User\settings.json
 | 路径泄露 | 脚本中严格使用 `%~dp0` 与隔离 `PATH`，避免调用本机开发工具 |
 | Arsenal Image Mounter 驱动未安装 | 提供无 RAMDisk 降级模式，并文档说明使用 `aim_ll.exe --install` 手动安装驱动 |
 | 默认串口号不匹配 | 用户上传前需根据设备管理器修改 `tasks.json` 中的 `--port` |
+| 遗留 RAMDisk 占用 | `_cleanup_ramdisks.ps1` 在启动/退出时强制清理 |
+| Git 元数据损坏 | `_git_failsafe.bat` 自动备份与恢复 |
+| MUS4_FW 固件安全 | 该子项目直接控制舵机/电调，修改前必须阅读其 `AGENTS.md` 中的安全章节 |
 
 ---
 
 ## 9. 给代理的实用提示
 
 - 修改前请先检查 `Doc_Dev\DevUDisk_Plan_v1.0\DevUDisk_Plan_v1.0.md` 与 `Doc_Dev\DevUDisk_Plan_v1.0\DevUDisk_Plan_ActionPlan_v1.0.md`，确保与整体规划一致。
-- 当前仓库没有 `pyproject.toml`、`package.json`、`Cargo.toml` 或 CI/CD 配置文件。
+- **如果涉及 `Projects/MUS4_FW/` 的修改，优先阅读并遵循 `Projects/MUS4_FW/AGENTS.md` 与 `Projects/MUS4_FW/CLAUDE.md` 的约定。**
+- 当前仓库没有根级 `pyproject.toml`、`package.json`、`Cargo.toml` 或 CI/CD 配置文件。
 - 由于项目面向教学场景，脚本与文档应优先保证**可读性**和**可维护性**，避免过度工程化。
 - 若需引入新依赖，必须确保其能运行在便携/离线环境中。
 - Batch 脚本涉及中文时，保存为 **UTF-8 without BOM + CRLF 换行**，并在 `@echo off` 后立即执行 `chcp 65001 >nul` 切换到 UTF-8 代码页。实测 UTF-8 with BOM 会被 cmd 解析为首行乱码命令。
+- PowerShell 脚本涉及中文时，保存为 **UTF-8 with BOM**。
 - 修改 `.gitignore`、`AGENTS.md`、文档结构或脚本接口后，应同步更新相关文档。
+- 新增 Arduino 示例工程时，可复制 `Projects\_template_.vscode\tasks.json` 到 `<工程名>\.vscode\tasks.json`，并同步更新 `DevUDisk.code-workspace`。
