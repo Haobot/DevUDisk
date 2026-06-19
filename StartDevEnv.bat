@@ -210,14 +210,12 @@ exit /b 0
 :: 输出：设置 ARDUINO_BUILD_BASE, CCACHE_DIR, STORAGE_TYPE
 :: ============================================================
 :pick_local_or_udisk
-:: 检查 %TEMP% 所在盘
-set "TEMP_FREE_BYTES="
-for /f "usebackq tokens=2 delims==" %%D in (`wmic logicaldisk where "DeviceID='%TEMP:~0,2%'" get FreeSpace /value 2^>nul ^| find "="`) do (
-    set "TEMP_FREE_BYTES=%%D"
+:: 检查 %TEMP% 所在盘可用空间（GB），使用 PowerShell 避免 WMIC 编码/回车问题
+set "TEMP_FREE_GB=0"
+for /f "usebackq delims=" %%D in (`powershell -NoProfile -Command "$disk=(Get-CimInstance Win32_LogicalDisk | Where-Object { $_.DeviceID -eq '%TEMP:~0,2%' }); if ($disk) { [math]::Floor($disk.FreeSpace/1GB) } else { 0 }"`) do (
+    set "TEMP_FREE_GB=%%D"
 )
-set "TEMP_FREE_BYTES=%TEMP_FREE_BYTES: =%"
-set /a "TEMP_FREE_GB=%TEMP_FREE_BYTES:~0,-9%"
-if "%TEMP_FREE_GB%"=="" set /a "TEMP_FREE_GB=0"
+set "TEMP_FREE_GB=%TEMP_FREE_GB: =%"
 
 :: 检查可写性
 copy /y nul "%TEMP%\DevUDisk_write_test.tmp" >nul 2>&1
