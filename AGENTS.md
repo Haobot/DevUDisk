@@ -34,6 +34,7 @@ D:/
 │       ├── DevUDisk_Plan_ActionPlan_v1.0.md      # 当前开发行动规划
 │       └── DevUDisk_Plan_DeliveryNotes_v1.0.md   # 第一阶段交付说明
 ├── PortableEnv/                                  # 便携工具链（被 .gitignore 排除）
+│   ├── DevUDisk.ini                              # 构建缓存策略配置文件（RAMDisk/SSD/U 盘）
 │   ├── _env_init.bat                             # 环境校验脚本
 │   ├── _build_with_progress.ps1                  # 带进度点与用时的编译包装脚本
 │   ├── _cleanup_ramdisks.ps1                     # 清理遗留 AIM RAMDisk 脚本
@@ -92,7 +93,7 @@ D:/
 | 编辑器 | VS Code 便携版 | 通过 `VSCode\data` 目录锁定配置 |
 | 开发框架 | Arduino-ESP32 | `esp32:esp32@3.3.10-cn`，离线预装 |
 | 命令入口 | Arduino-CLI | `1.4.1`（Commit: e39419312） |
-| 编译加速 | RAMDisk（Arsenal Image Mounter + aim_ll.exe，可选） | 优先动态可用盘符；无 aim_ll 时回退到 RamService/ImDisk，最后回退到 `%TEMP%\DevUDisk_build` |
+| 编译加速 | 本地 SSD 缓存（默认）+ U 盘兜底 + 可选 RAMDisk | 默认 `%TEMP%\DevUDisk_build` 与 `%TEMP%\DevUDisk_ccache`；SSD 空间不足或不可写时 fallback 到 `%U_DISK%\DevUDisk_cache\build` 与 `%U_DISK%\DevUDisk_cache\ccache`；RAMDisk 通过 `PortableEnv\DevUDisk.ini` 显式启用 |
 | 串口驱动 | CH343/CH340、CP210x | 位于 `PortableEnv\Drivers\` |
 
 ### 2.1 关键目录占用（实测）
@@ -108,29 +109,31 @@ D:/
 
 1. **Zero Installation**：不依赖主机安装任何软件；普通用户模式即可编译，管理员权限仅用于创建/卸载 RAMDisk。
 2. **Path Isolation**：`StartDevEnv.bat` 将 `PATH` 收缩为 `U:\PortableEnv\arduino-cli;U:\PortableEnv\Git\cmd（如存在）;C:\Windows\System32;C:\Windows\System32\WindowsPowerShell\v1.0`。优先使用 U 盘内置 Git，缺失时回退到本机 Git 固定路径，避免调用本机 Arduino/Python 等其他工具。
-3. **Performance First**：源码保留在 U 盘；优先在 RAMDisk 构建，其次回退到本地临时目录，避免 U 盘 I/O 瓶颈。
+3. **Performance First**：源码保留在 U 盘；默认在本地 SSD 构建并保留跨会话缓存，SSD 不可用时 fallback 到 U 盘缓存，RAMDisk 作为可选加速方案，避免 U 盘 I/O 瓶颈。
 
 ### 2.3 脚本执行流程
 
 **`StartDevEnv.bat`**：
 1. 通过 `%~d0` 计算 U 盘盘符。
-2. 调用 `PortableEnv\_git_failsafe.bat` 备份 Git 关键状态。
-3. 调用 `PortableEnv\_env_init.bat` 校验环境。
-4. 设置 Arduino 环境变量（`ARDUINO_DIRECTORIES_DATA`、`ARDUINO_DIRECTORIES_USER`、`ARDUINO_DIRECTORIES_DOWNLOADS`）。
-5. 检测是否以管理员运行；动态选择可用 RAMDisk 盘符（默认 `R:`，回退 `Z:` `Y:` `Q:` `P:` `O:`）。
-6. 若存在 `PortableEnv\ImDisk\aim_cli\x64\aim_ll.exe` 且为管理员，则直接创建 RAMDisk（大小 2GB，NTFS）；创建前会运行 `_cleanup_ramdisks.ps1` 清理遗留 AIM RAMDisk。
-7. 否则依次回退到 RamService 服务、ImDisk。
-8. 无 RAMDisk 时回退到 `%TEMP%\DevUDisk_build`。
-9. 配置 Git：优先 U 盘内置 `PortableEnv\Git\cmd\git.exe`，其次回退到常见本机 Git 路径。
-10. 构造隔离 `PATH` 并启动 VS Code，打开 `DevUDisk.code-workspace` 多工程工作区。
+2. 读取 `PortableEnv\DevUDisk.ini` 配置，并由环境变量 `DEVUDISK_USE_RAMDISK`、`DEVUDISK_BUILD_PATH`、`DEVUDISK_CCACHE_DIR` 覆盖。
+3. 调用 `PortableEnv\_git_failsafe.bat` 备份 Git 关键状态。
+4. 调用 `PortableEnv\_env_init.bat` 校验环境。
+5. 设置 Arduino 环境变量（`ARDUINO_DIRECTORIES_DATA`、`ARDUINO_DIRECTORIES_USER`、`ARDUINO_DIRECTORIES_DOWNLOADS`）。
+6. 检测是否以管理员运行。
+7. 若配置显式启用 RAMDisk，则动态选择可用盘符（默认 `R:`，回退 `Z:` `Y:` `Q:` `P:` `O:`），清理遗留 AIM RAMDisk 后创建 RAMDisk（大小 2GB，NTFS）。
+8. 若未启用 RAMDisk，检查 `%TEMP%` 所在 SSD 的可用空间与可写性：空间 >= `min_free_gb`（默认 2 GB）且可写时使用 `%TEMP%\DevUDisk_build` 与 `%TEMP%\DevUDisk_ccache`；否则 fallback 到 `%U_DISK%\DevUDisk_cache\build` 与 `%U_DISK%\DevUDisk_cache\ccache`。
+9. 确保构建目录与 ccache 目录存在，并将存储策略写入 `%TEMP%\DevUDisk_storage_type.txt`。
+10. 配置 Git：优先 U 盘内置 `PortableEnv\Git\cmd\git.exe`，其次回退到常见本机 Git 路径。
+11. 构造隔离 `PATH` 并启动 VS Code，打开 `DevUDisk.code-workspace` 多工程工作区。
 
 **`StopDevEnv.bat`**：
 1. 调用 `PortableEnv\_git_failsafe.bat` 备份 Git 关键状态。
 2. 结束 VS Code 进程。
-3. 若存在 aim_ll 且为管理员，使用 `aim_ll -d -m <盘符>` 卸载 RAMDisk；随后再次调用 `_cleanup_ramdisks.ps1` 清理所有遗留 AIM RAMDisk。
-4. 否则依次回退到停止 RamService 服务、ImDisk。
-5. 清理 `%TEMP%\DevUDisk_build` 与 RAMDisk 盘符记录文件。
-6. 调用 PowerShell 弹出 U 盘。
+3. 读取 `%TEMP%\DevUDisk_storage_type.txt` 判断本次存储策略。
+4. 若策略为 `ramdisk`：使用 `aim_ll -d -m <盘符>` 卸载 RAMDisk；随后再次调用 `_cleanup_ramdisks.ps1` 清理所有遗留 AIM RAMDisk；否则依次回退到停止 RamService 服务、ImDisk。
+5. 若策略为 `ssd` 或 `udisk`：保留持久化构建缓存，仅清理本次会话记录文件。
+6. 删除 `%TEMP%\DevUDisk_ramdisk_letter.txt` 与 `%TEMP%\DevUDisk_storage_type.txt`。
+7. 调用 PowerShell 弹出 U 盘。
 
 **`PortableEnv\_env_init.bat`**：
 1. 校验 U 盘剩余空间 >= 5 GB。
@@ -208,7 +211,7 @@ D:/
 - **`Arduino: Build (RAMDisk)`**（默认构建任务，`Ctrl + Shift + B`）：
   调用 `PortableEnv\_build_with_progress.ps1` 包装脚本执行 arduino-cli 编译，输出进度点与总用时：
   ```bat
-  powershell -NoProfile -ExecutionPolicy Bypass -File %U_DISK%\PortableEnv\_build_with_progress.ps1 -Cli %U_DISK%\PortableEnv\arduino-cli\arduino-cli.exe -Fqbn esp32:esp32:esp32 -Libs "" -BuildPath %ARDUINO_BUILD_BASE%\[ProjectName] -Output-dir [Project]\build -SketchDir [Project]
+  powershell -NoProfile -ExecutionPolicy Bypass -File %U_DISK%\PortableEnv\_build_with_progress.ps1 -Cli %U_DISK%\PortableEnv\arduino-cli\arduino-cli.exe -Fqbn esp32:esp32:esp32 -Libs "" -BuildPath %ARDUINO_BUILD_BASE%\[ProjectName] -Output-dir [Project]\build -SketchDir [Project] -CcacheDir %CCACHE_DIR%
   ```
 - **`Arduino: Upload`**：
   ```bat
@@ -230,6 +233,7 @@ set ARDUINO_DIRECTORIES_DATA=%U_DISK%\PortableEnv\arduino-cli
 set ARDUINO_DIRECTORIES_USER=%U_DISK%\Projects
 set ARDUINO_DIRECTORIES_DOWNLOADS=%U_DISK%\PortableEnv\arduino-cli\staging
 set ARDUINO_BUILD_BASE=%TEMP%\DevUDisk_build
+set CCACHE_DIR=%TEMP%\DevUDisk_ccache
 
 arduino-cli compile --fqbn esp32:esp32:esp32 --build-path %ARDUINO_BUILD_BASE%\Blink --output-dir %U_DISK%\Projects\Blink\build %U_DISK%\Projects\Blink
 ```
@@ -275,7 +279,7 @@ python arduino-cli.py -cu --sketch MUS4_FW.ino
   ```
   当 U 盘未内置 Git 且检测到本机 Git 时，可临时加入本机 Git 固定路径作为回退，但需在启动日志中明确提示。
 - **禁止行为**：不要使用 `where python`、`where git`、`dir /s` 等依赖系统搜索的命令。
-- **管理员权限**：仅在创建/卸载 RAMDisk 时请求管理员权限；普通模式自动回退到本地临时构建目录。
+- **管理员权限**：仅在创建/卸载 RAMDisk 时请求管理员权限；普通模式默认使用本地 SSD 缓存，SSD 不可用时 fallback 到 U 盘缓存。
 - **错误处理**：使用 `if %errorlevel% neq 0` 检查关键步骤返回值，失败时给出明确提示并暂停。
 - **RAMDisk 盘符**：禁止硬编码为固定 `R:`。启动脚本会动态选择可用盘符，并将最终盘符写入 `%TEMP%\DevUDisk_ramdisk_letter.txt` 供 `StopDevEnv.bat` 读取。
 
@@ -327,6 +331,9 @@ VS Code 便携配置位于 `PortableEnv\VSCode\data\user-data\User\settings.json
 | 路径隔离 | 启动后 `PATH` 仅包含 U 盘 arduino-cli 与最小系统路径 | ✅ |
 | 离线编译 | Blink / WiFiScan 不依赖本机 Arduino 环境编译成功 | ✅ |
 | RAMDisk 回退 | 无可用 aim_ll 时自动使用 `%TEMP%\DevUDisk_build` | ✅ |
+| SSD 默认缓存 | 未启用 RAMDisk 时 `ARDUINO_BUILD_BASE` 指向 `%TEMP%\DevUDisk_build` | ⏳ |
+| SSD 不足 fallback | SSD 空间 < `min_free_gb` 时自动切换到 `%U_DISK%\DevUDisk_cache\build` | ⏳ |
+| 跨会话缓存保留 | 退出后 SSD/U 盘缓存目录不被删除 | ⏳ |
 | VS Code 启动 | `StartDevEnv.bat` 成功启动 VS Code 并打开 Projects | ✅ |
 | 安全退出 | `StopDevEnv.bat` 关闭 VS Code、清理临时目录 | ✅ |
 | U 盘弹出 | 执行后可在资源管理器中安全删除 | ✅（脚本已调用 Eject） |
